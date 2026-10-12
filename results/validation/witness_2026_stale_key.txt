@@ -1,0 +1,26 @@
+# 2026 pseudocode: a vertex of U_i is still stored in the caller's D when the sub-call returns
+# n m source, then one arc per line: tail head weight
+12 23 0
+0 1 76
+0 2 857
+0 3 172
+0 4 954
+0 5 441
+0 6 858
+0 7 249
+0 8 370
+0 9 158
+0 10 600
+0 11 629
+0 0 30
+2 3 546
+4 10 617
+6 4 81
+7 7 609
+8 0 906
+8 6 478
+9 0 140
+9 11 765
+9 3 636
+9 1 592
+10 11 711

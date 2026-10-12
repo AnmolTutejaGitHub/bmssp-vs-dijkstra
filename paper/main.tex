@@ -1,0 +1,313 @@
+% IEEE conference format (A4), matching the supplied IEEE conference template.
+\documentclass[conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{newtxtext}  % Times, as in the IEEE template
+\usepackage[varvw]{newtxmath}
+\usepackage{cite}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\graphicspath{{figures/}}
+\input{numbers}
+% \input is not expandable enough inside a tabular; use the primitive for table bodies.
+\makeatletter\newcommand{\tabinput}[1]{\@@input #1 }\makeatother
+
+% Author block: all authors share one affiliation, so a single block is used (names, department,
+% university, location, e-mail addresses in the order of the names).
+\newcommand{\dhat}{\widehat{d}}
+\newcommand{\Bp}{B'}
+\newcommand{\bmA}{BMSSP-25}
+\newcommand{\bmB}{BMSSP-26}
+\newcommand{\fp}{\textsc{FindPivots}}
+\newcommand{\Oh}{O}
+
+\renewcommand{\IEEEkeywordsname}{Keywords}
+\begin{document}
+
+\title{A Comprehensive Theoretical and Experimental Comparison of Dijkstra's Algorithm and Duan~et~al.'s SSSP Algorithms}
+
+\author{\IEEEauthorblockN{Anmol, Tanmay Arora, Adhyyan, Pahul Veer Singh Gogna}
+\IEEEauthorblockA{\textit{Department of Computer Science \& Engineering}\\
+\textit{Chitkara University}\\
+Punjab, India\\
+anmol0115.be23@chitkara.edu.in, tanmay1305.be23@chitkara.edu.in,\\
+adhyya0180.be23@chitkara.edu.in, pahul0508.be23@chitkara.edu.in}}
+
+\maketitle
+
+\begin{abstract}
+Dijkstra's algorithm has been the practical method for single-source shortest paths for six decades. In 2025 Duan, Mao, Mao, Shu and Yin gave the first deterministic algorithm for directed graphs with real non-negative weights that is asymptotically faster on sparse graphs, and in 2026 Duan, Mao, Shu and Yin improved the bound with a second algorithm. Both results are theoretical. We compare the three algorithms under identical conditions: we contrast the two new algorithms component by component, implement both from the published pseudocode, validate them on \ValSmallTrials{} and \ValMediumTrials{} random graphs, and measure running time and machine-independent counts of comparisons, additions and edge scans on eleven real graphs and four synthetic families with up to four million vertices. Dijkstra's algorithm with a binary heap is the fastest on every instance, by a factor of \RealRatioMin{} to \RealRatioMax{} on the five primary road networks. On random and preferential-attachment graphs, whose search frontier is wide, the earlier of the two new algorithms needs fewer comparisons than Dijkstra's algorithm on large graphs, so its asymptotic advantage shows in the cost model of the theorems, yet it remains \ScaleRandTwoFiveLast{} times slower at four million vertices. The later algorithm removes most of the pivot-finding work of the earlier one but is the faster of the two on only \RealTwoSixFasterWord{} instance. Instrumented runs also show that a stale-key defect known for the earlier algorithm occurs in the published pseudocode of the later one, and that its base case can return a boundary that violates its own invariant; neither affected any computed distance.
+\end{abstract}
+
+\begin{IEEEkeywords}
+single-source shortest paths, Dijkstra's algorithm, bounded multi-source shortest path, sorting barrier, experimental algorithmics, comparison-addition model
+\end{IEEEkeywords}
+
+\section{Introduction}
+The single-source shortest path (SSSP) problem asks for the length of a shortest path from a source vertex $s$ to every vertex of a directed graph $G=(V,E)$ with $n=|V|$ vertices, $m=|E|$ arcs and non-negative real arc weights. Dijkstra's algorithm~\cite{dijkstra1959} solves it in $\Oh(m+n\log n)$ time when the frontier is kept in a Fibonacci heap~\cite{fredman1987} or a relaxed heap~\cite{driscoll1988}, in the comparison-addition model in which weights may only be added and compared. Because the algorithm settles vertices in order of distance, it sorts them as a by-product, and $n\log n$ was long regarded as a barrier for sparse graphs. Haeupler et al.~\cite{haeupler2024} made the intuition precise: with a suitable heap Dijkstra's algorithm is universally optimal among algorithms that must output the vertices in distance order. The qualification matters, because an algorithm that returns only the distances is not bound by it.
+
+Duan, Mao, Mao, Shu and Yin~\cite{duan2025} exploited exactly this gap. Their deterministic algorithm runs in $\Oh(m\log^{2/3}n)$ time and is the first to beat $\Oh(m+n\log n)$ on sparse directed graphs with real weights. Its core is a recursive procedure, bounded multi-source shortest path (BMSSP), that never keeps the whole frontier sorted: a subroutine reduces the frontier to a small set of pivots, and a block-based structure hands out the smallest part of the frontier without ordering it internally. In 2026 Duan, Mao, Shu and Yin~\cite{duan2026} improved the bound to $\Oh(m\sqrt{\log n}+\sqrt{mn\log n\log\log n})$, which is $\Oh(m\sqrt{\log n\log\log n})$ for sparse graphs, by replacing the Bellman--Ford style pivot search with local Dijkstra searches and a forest partition, and by simplifying the data structure. Neither paper gives its algorithm a name. Since both are built around the BMSSP procedure, we refer to the algorithm of Duan, Mao, Mao, Shu and Yin~\cite{duan2025} as \bmA{} and to the algorithm of Duan, Mao, Shu and Yin~\cite{duan2026} as \bmB{}; the suffix is the year of publication.
+
+Neither paper reports an implementation. Three facts make an experimental study worthwhile. First, the asymptotic gain is small: $\log^{1/3}n$ is \GainTwoFiveAtTwenty{} for $n=2^{20}$ and only \GainTwoFiveAtSixtyFour{} for $n=2^{64}$. Second, the constants are potentially large, since both algorithms scan arcs several times and maintain bespoke structures. Third, the preconditions are not free: both analyses assume a degree-bounded graph obtained by a transformation, and both assume that all path lengths are distinct, which must be enforced by tie-breaking. \bmA{} has been evaluated before~\cite{castro2025,valko2025,makowski2025}; to our knowledge no measurements of \bmB{} have been published in a peer-reviewed venue, and no earlier study reports counts in the model in which the bounds are stated.
+
+This paper makes the following contributions.
+\begin{itemize}
+\item A component-by-component comparison of Dijkstra's algorithm, \bmA{} and \bmB{}, including the values their parameters take at feasible sizes (Section~\ref{sec:theory}).
+\item Independent C++ implementations of both BMSSP algorithms, written from the pseudocode, together with randomized differential validation (Sections~\ref{sec:impl} and~\ref{sec:correct}).
+\item Two observations on the published pseudocode of \bmB{} made while validating: completed vertices can remain stored in the caller's structure, as in \bmA, and the base case can return a boundary larger than a value it leaves behind (Section~\ref{sec:correct}).
+\item Measurements of running time and of comparisons, additions and edge scans on five real road networks, six further real graphs of the SNAP collection and four synthetic families, with sweeps over the parameters $k$ and $t$, the degree reduction, density and weight range (Section~\ref{sec:results}).
+\end{itemize}
+
+\section{Related Work}
+\subsection{Classical results}
+Fredman and Tarjan~\cite{fredman1987} obtained the $\Oh(m+n\log n)$ bound for Dijkstra's algorithm with Fibonacci heaps, and Driscoll et al.~\cite{driscoll1988} matched it with relaxed heaps. Experimental work on shortest-path algorithms has a long tradition~\cite{cherkassky1996}, and in practice Dijkstra's algorithm is usually run with a binary heap, as in~\cite{castro2025}. Faster algorithms were known only outside the setting considered here: Thorup's linear-time algorithm~\cite{thorup1999} needs undirected graphs and integer weights in the word RAM, and the algorithm of Pettie and Ramachandran~\cite{pettie2005} is for undirected graphs. For undirected real-weighted graphs Duan et al.~\cite{duan2023} gave a randomized $\Oh(m\sqrt{\log n\log\log n})$ algorithm, later derandomized by Yan~\cite{yan2026}; a further improvement for undirected graphs appeared while this paper was being prepared~\cite{kadria2026}.
+
+\subsection{Experimental studies of \bmA}
+Castro, Clementino and de Freitas~\cite{castro2025} implemented \bmA{} in C++ in three variants (worst case, constant degree, expected time) and compared the first with binary-heap Dijkstra on sparse random graphs with up to $2^{25}$ vertices, grids and U.S. road networks. They report that Dijkstra is three to four times faster on large instances and up to 27.5 times faster on small grids, estimate by curve fitting that a crossover would lie far beyond any feasible size, and find the constant-degree transformation counterproductive. They also identified a defect in the original analysis: a vertex that is completed inside a recursive call may stay in the data structure with an outdated key, so the sets returned by successive calls need not be disjoint; deleting the vertex on completion repairs it, and the original authors confirmed both problem and repair~\cite{castro2025}. Their code is public~\cite{bmsspcode}. Valko, Paranjpe and Marx G\'omez~\cite{valko2025} evaluated a Rust implementation on Lightning Network snapshots and likewise found Dijkstra faster. Makowski et al.~\cite{makowski2025} provide a Python package with measurements on grid and geospatial networks.
+
+Several public repositories also implement \bmA, and some report that it outperforms Dijkstra's algorithm~\cite{ryu2025,webb2025}. On inspection of their sources these reports concern variants that depart from the published algorithm. The optimized solver of~\cite{ryu2025}, for example, replaces the recursion over levels, the pivot search and the block structure by a bucket queue of fixed bucket width and is timed for a single source--target pair on graphs with unit weights, where bucketing by distance is a linear-time method outside the comparison-addition model; the same repository reports its solver that follows the paper to be two to four times slower than Dijkstra. The benchmark of~\cite{webb2025} likewise times source--target queries on unit-weight graphs against a library routine. We therefore do not regard these reports as measurements of the algorithm of~\cite{duan2025}, but we include graphs they use in our experiments (Section~\ref{sec:setup}).
+
+The studies above report wall-clock time (and, in~\cite{castro2025}, memory) for \bmA. They leave open how \bmB{} behaves, how much of the observed gap is additional algorithmic work rather than cost per operation, and how the result depends on graph structure beyond random graphs, grids and road networks.
+
+\section{The Three Algorithms}\label{sec:theory}
+\subsection{A common view}
+All three algorithms maintain labels $\dhat[v]\ge d(v)$, where $d(v)$ is the true distance, and only lower a label by relaxing an arc $(u,v)$, that is, by setting $\dhat[v]\leftarrow\dhat[u]+w_{uv}$. A vertex is \emph{complete} when $\dhat[v]=d(v)$. Following~\cite{duan2026}, each algorithm keeps a \emph{frontier}: a set of vertices such that the shortest path to every incomplete vertex passes through a complete frontier vertex. An algorithm repeatedly identifies a set $Z$ of complete vertices, relaxes the arcs leaving $Z$, and replaces $Z$ in the frontier by the out-neighbours it has just improved. The algorithms differ in how they find $Z$.
+
+Dijkstra's algorithm takes $Z$ to be the single frontier vertex with the smallest label, which is necessarily complete. Finding it requires a priority queue over the whole frontier, and a frontier of $\Theta(n)$ vertices then costs $\Theta(\log n)$ comparisons per extraction.
+
+Both BMSSP algorithms instead solve the subproblem $\textsc{BMSSP}(l,B,S)$: given a level $l$, a bound $B$ and a frontier $S$, complete all vertices $v$ with $d(v)<B$ whose shortest path visits $S$. A call pulls the part $S_i$ of its frontier that lies below a separator $B_i$, recurses on $(l-1,B_i,S_i)$, relaxes the arcs out of the returned complete set $U_i$, and repeats. A call may stop early (a \emph{partial} execution) once it has completed enough vertices, returning a boundary $\Bp<B$ up to which its work is final. The whole problem is the call with $S=\{s\}$, $B=\infty$ at level $\lceil(\log n)/t\rceil$. Table~\ref{tab:theory} lists the components.
+
+\begin{table*}[t]
+\caption{Components of the three algorithms}
+\label{tab:theory}
+\centering
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}p{2.4cm}p{3.2cm}p{5.4cm}p{5.6cm}@{}}
+\hline
+ & Dijkstra~\cite{dijkstra1959,fredman1987} & \bmA~\cite{duan2025} & \bmB~\cite{duan2026}\\
+\hline
+Running time & $\Oh(m+n\log n)$ & $\Oh(m\log^{2/3}n)$ & $\Oh(m\sqrt{\log n}+\sqrt{mn\log n\log\log n})$\\
+Output & distances in sorted order & distances & distances\\
+Complete set $Z$ & minimum of the frontier & set $U_i$ returned by a recursive call & set $U_i$ returned by a recursive call\\
+Frontier reduction & none & pivots: roots of shortest-path trees with at least $k$ vertices; at most $|U|/k$ of them & one representative (the minimum) per subtree of $\Theta(k)$ vertices of a forest spanning $S$\\
+Pivot finding & -- & $k$ rounds of Bellman--Ford relaxation from $S$: $\Oh(k)$ per vertex & local Dijkstra searches that stop after $k$ vertices, then a linear-time partition: $\Oh(\log k)$ per vertex\\
+Partial sorting & heap (total order) & two block sequences; \textsc{Insert} in $\Oh(\log(N/M))$, \textsc{BatchPrepend}, \textsc{Pull} & one search tree of blocks; \textsc{Insert} in $\Oh(\log(N/M))$, linear-time \textsc{Merge} and \textsc{Pull}\\
+Hand-back after a partial call & -- & caller re-inserts what it can reconstruct (\textsc{BatchPrepend}) & callee returns its remaining frontier $D$; caller merges it\\
+Call stops when & frontier empty & $|U|\ge k2^{lt}$ or $D$ empty & $|U|>t^32^{lt}$ or $D$ empty\\
+Base case ($l=0$) & -- & Dijkstra from one vertex, $k+1$ vertices & Dijkstra from a set, $t^3+1$ vertices\\
+Parameters & -- & $k=\lfloor\log^{1/3}n\rfloor$, $t=\lfloor\log^{2/3}n\rfloor$ & $t=\lceil\sqrt{\log n\log\log n/\delta}\,\rceil$, $k=\lceil t/\log t\rceil$\\
+Degree assumption & none & in- and out-degree at most 2 & degree at most $\delta$, $3\le\delta\le m/n$\\
+\hline
+\end{tabular}
+\end{table*}
+
+\subsection{\bmA: the algorithm of Duan, Mao, Mao, Shu and Yin}
+\fp{} of \bmA{} relaxes outward from $S$ for $k$ rounds, restricted to labels below $B$, and collects the touched vertices in $W$. If $|W|$ exceeds $k|S|$ the frontier is already small relative to the work ahead and every vertex of $S$ becomes a pivot. Otherwise the tight arcs inside $W$ form a forest, and only roots in $S$ of trees with at least $k$ vertices become pivots: a vertex whose shortest path leaves $S$ through a smaller tree was completed by the $k$ rounds. The pivots enter a structure $D$ that returns, per \textsc{Pull}, at most $M=2^{(l-1)t}$ keys with the smallest values and a separator. Vertices improved by relaxing out of $U_i$ are inserted individually if their new value is at least $B_i$ and prepended in a batch if it lies in $[\Bp_i,B_i)$. The analysis~\cite{duan2025} charges $\Oh(k)$ per vertex and level for \fp{} and $\Oh(t)$ per insertion, and balances the two with $k=\lfloor\log^{1/3}n\rfloor$ and $t=\lfloor\log^{2/3}n\rfloor$.
+
+\subsection{\bmB: the algorithm of Duan, Mao, Shu and Yin}
+The observation behind \bmB{} is that the $k$ relaxation rounds determine, for every vertex, the pivot tree to which it belongs, which is more than the recursion needs~\cite{duan2026}. \fp{} now runs a Dijkstra search from each $x\in S$ that stops once it has discovered $k$ vertices or touches a tree built by an earlier search, in which case the two are joined. A search that exhausts its reachable vertices before finding $k$ puts $x$ into a set $Q$ and its vertices into $W$; they stay out of the recursion and are dealt with once at the end of the call. The remaining trees are cut into edge-disjoint subtrees with between $k$ and $3k$ vertices~\cite{frederickson1983}, the frontier vertices of each subtree form a group $P_j$, and only the minimum $p_j$ of each group is inserted into $D$. When $p_j$ is pulled, the members of $P_j$ below the separator join $S_i$ by a scan of the group. The structure is a single search tree of blocks of $M=t\,2^{(l-1)t}$ keys, and a call returns its remaining frontier as such a structure, which the caller merges in linear time. The resulting time is $\Oh(m(t+\log n\log t/(\delta t)))$ on a graph of maximum degree $\delta$, minimized by $t=\lceil\sqrt{\log n\log\log n/\delta}\,\rceil$.
+
+\subsection{Preconditions}
+\emph{Distinct path lengths.} Both analyses assume that no two paths have the same length. Both papers achieve this by comparing labels as tuples $\langle$length, number of arcs, vertex, predecessor$\rangle$ in lexicographic order. Every label then carries four fields and every comparison may inspect several of them, whereas Dijkstra's algorithm compares single numbers.
+
+\emph{Bounded degree.} \bmA{} is analysed on a graph in which every vertex has in- and out-degree at most two, obtained by replacing each vertex by a cycle of zero-weight arcs with one cycle vertex per incident arc~\cite{duan2025,frederickson1983}. The result has up to $2m$ vertices and $3m$ arcs. \bmB{} generalizes the construction to cycles of $\lceil\Delta_v/(\delta-2)\rceil$ vertices for a vertex with $\Delta_v$ incident arcs and requires $3\le\delta\le m/n$. The value proposed for $\delta$ is $\min\{m/n,\log\log n\}/4$~\cite{duan2026}, which reaches the required minimum of three only when $\log\log n\ge 12$, that is, for $n\ge 2^{4096}$; the authors note that constants may be adjusted by implementers. For every feasible input the prescription therefore amounts to $\delta=3$ (or to no reduction when $m/n<3$), and we use $\delta=3$ in the formula for $t$ throughout.
+
+\subsection{Parameters at feasible sizes}
+Table~\ref{tab:params} evaluates the prescribed parameters. For all sizes that fit in memory today \bmA{} uses $k\in\{2,3\}$, so its \fp{} performs two or three relaxation rounds, and three or four recursion levels; \bmB{} uses $k\in\{2,3\}$ as well, so each local search stops after two or three vertices, and its base case is a Dijkstra search over a few hundred vertices. The last two columns give the factor by which each bound improves on $n\log n$ for sparse graphs when all hidden constants are set to one. Read this way the bound of \bmA{} is the smaller of the two until $(\log\log n)^3<\log n$, that is, until $\log n$ exceeds \FaceValueCrossLog{}. Constants decide the comparison at any feasible size, which is what the experiments measure.
+
+\begin{table}[t]
+\caption{Prescribed parameters for concrete $n$ ($\delta=3$). Levels $=\lceil\log_2 n/t\rceil$; gain $=$ factor by which the bound of the algorithm improves on $n\log n$ with unit constants}
+\label{tab:params}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}c|cccc|ccccc@{}}
+\hline
+ & \multicolumn{4}{c|}{\bmA} & \multicolumn{5}{c}{\bmB}\\
+$n$ & $k$ & $t$ & levels & gain & $k$ & $t$ & levels & $t^3$ & gain\\
+\hline
+\tabinput{tables/theory_params.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\section{Implementation}\label{sec:impl}
+All algorithms are implemented in C++17 in a single code base and share the graph representation (compressed sparse rows), the label type and the timing harness. The \bmA{} and \bmB{} implementations were written from the pseudocode of~\cite{duan2025} and~\cite{duan2026}; no code from other implementations was used.
+
+\emph{Dijkstra.} Two variants are provided: a binary heap~\cite{williams1964} of (key, vertex) pairs with lazy deletion, the usual practical implementation, which we call Dijkstra, and an indexed binary heap with \textsc{DecreaseKey}, which we call Dijkstra-DK. Both operate on plain path lengths. The first is the baseline in all comparisons; on the two instances on which we checked (SF and a random graph with $2^{20}$ vertices) it was slightly faster than \texttt{std::priority\_queue}.
+
+\emph{Labels.} The BMSSP implementations store a 16-byte label (length, number of arcs, predecessor) per vertex and compare the tuples described in Section~\ref{sec:theory}. Arc weights are 64-bit integers, so sums are exact and the results of different algorithms can be compared for equality.
+
+\emph{Partial-sorting structures.} Blocks are arrays with constant-time deletion by swapping with the last element. The block index is a red-black tree (\texttt{std::map}) keyed by block upper bounds, as proposed in both papers~\cite{guibas1978}. A direct-address table per recursion level maps a vertex to its block and position, as in~\cite{castro2025}; this is possible because calls on one level run one after another. Selection of the element of a given rank, needed by \textsc{Pull}, block splits and \textsc{BatchPrepend}, uses quickselect that switches to median-of-medians pivots~\cite{blum1973} once a linear work budget is exceeded~\cite{musser1997}, so the worst case stays linear. The base case of \bmB{} uses a balanced search tree (\texttt{std::set}), as its pseudocode prescribes, and the local searches of both algorithms use binary heaps instead of Fibonacci heaps; with at most $k+1$, respectively $k+\delta$, entries this does not change any bound that matters at the sizes considered.
+
+\emph{Sets.} The sets $U$ returned by recursive calls are stored as contiguous ranges of one global array, so returning a set costs nothing and a caller's set is the concatenation of its children's ranges. Membership tests use time-stamped arrays.
+
+\emph{Deviations from the pseudocode.} Three places are implemented differently from the printed pseudocode. They are switchable, and Section~\ref{sec:correct} reports what each of them changes. (i) In both algorithms a vertex is deleted from the caller's $D$ when a recursive call reports it complete. For \bmA{} this is the repair of~\cite{castro2025}. (ii) The base case of \bmB{} returns the smallest value remaining in its structure after the loop instead of the separator of its last \textsc{Pull}. (iii) Line~28 of the main procedure of \bmB{} selects a new representative only for groups $P_j$ that are still non-empty, as the accompanying text of~\cite{duan2026} says; a group can be emptied by later vertices of the same $U_i$ after it was scheduled for re-selection.
+
+\emph{Counters.} A second build of the same sources increments counters for label or key comparisons, additions $\dhat[u]+w_{uv}$, edge scans (split by where they occur), and structure operations. Comparisons include those made inside heaps, search trees and selection. The timing build contains no instrumentation.
+
+The implementations, the experiment drivers, the raw measurements and the scripts that regenerate every table and figure of this paper from them are publicly available~\cite{thiscode}.
+
+\section{Experimental Setup}\label{sec:setup}
+\emph{Road networks.} The real inputs are the five road networks of the SSTD~2005 collection~\cite{li2005}, obtained from the public mirror~\cite{ansari2020}: Oldenburg (OL), San Joaquin County (TG), California (CAL), San Francisco (SF) and North America (NA); OL, TG and SF originate from Brinkhoff's generator data~\cite{brinkhoff2002}. Each file lists a road segment once with its Euclidean length. All five networks are connected when segments are read as undirected, but a search that follows segments only in their listed direction reaches as few as six vertices from vertex~0 of CAL, so every segment is entered as two opposite arcs. Lengths are given with six decimals and are multiplied by $10^6$ to obtain exact integers. Table~\ref{tab:data} lists the resulting graphs.
+
+\begin{table}[t]
+\caption{Road networks (arcs counted in both directions). Front.: largest number of vertices held at once by Dijkstra's heap, in percent of $n$. Last columns: prescribed $k/t/$levels}
+\label{tab:data}
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrrcc@{}}
+\hline
+ & $n$ & $m$ & max & $m/n$ & front. & \bmA & \bmB\\
+ &  &  & deg. &  & (\%) & \multicolumn{2}{c}{$k/t/$levels}\\
+\hline
+\tabinput{tables/datasets.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\emph{SNAP graphs.} To cover larger real graphs of other kinds we add \SnapGraphs{} graphs of the SNAP collection~\cite{snap}, all of which are also used in~\cite{ryu2025}: the web graphs web-Stanford and web-Google, the road networks of Pennsylvania, Texas and California, and the Pokec social network (Table~\ref{tab:snap}). The road files list both directions of every road; all files are used as given. They carry no weights, so every graph is run twice, with unit weights as in~\cite{ryu2025} and with uniform random integer weights in $[1,2^{20}]$. Since a random vertex of a directed web graph may reach almost nothing, sources are random vertices that reach at least a quarter of the graph.
+
+\emph{Synthetic families.} Four families with $n$ from $2^{10}$ to $2^{22}$ extend the range of sizes and structures: (i) random digraphs with a random Hamiltonian cycle and $2n$ further uniformly random arcs ($m=3n$); (ii) square grids with arcs in both directions; (iii) preferential-attachment graphs~\cite{barabasi1999} with two links per new vertex, entered in both directions, which have a heavy-tailed degree distribution; and (iv) hub graphs, which are random digraphs in which the source additionally has an arc to every other vertex whose weight exceeds every ordinary weight, so that the search starts with all $n$ vertices in its frontier. Weights are uniform integers in $[1,2^{20}]$ unless varied. Two sweeps on random digraphs with $n=2^{18}$ vary the average out-degree from 2 to 32 and the largest weight from $1$ (all paths of equal hop count tie) to $2^{30}$.
+
+\emph{Measures.} We report wall-clock time of one SSSP computation and, from the instrumented build, the number of comparisons, additions and edge scans divided by $m$. A run includes initialization of the labels but not graph loading or allocation of working memory, which is done once per graph.
+
+\emph{Protocol.} On each road network every algorithm is run from the same \RealSources{} uniformly random sources, nine times each; SNAP instances use ten sources and three repetitions, synthetic instances three random sources (the hub for family (iv)) and five repetitions. Every run is a complete single-source computation over the whole graph. The degree-reduction and parameter experiments use ten and five sources per network. For each source we take the median over repetitions. Ratios to Dijkstra are formed per source and summarized by their geometric mean. The distances of every timed run are compared with those of Dijkstra's algorithm. Unless stated otherwise the BMSSP algorithms run on the input graph as given, without degree reduction, with the parameters of Table~\ref{tab:data} and with deviations (i)--(iii).
+
+\emph{Platform.} Apple M1 (8 cores, 8~GB), macOS~26.1, Apple clang~17.0.0 with \texttt{-O3}; all runs are single-threaded.
+
+\section{Results}\label{sec:results}
+\subsection{Validation and observations on the pseudocode}\label{sec:correct}
+Every variant was run on \ValSmallTrials{} random graphs with at most 16 vertices and \ValMediumTrials{} random graphs with at most 400 vertices, drawn from six shapes (sparse, dense, paths with chords, stars, trees with extra arcs, grids) and five weight ranges including all-zero weights, and compared with a Bellman--Ford computation~\cite{bellman1958}. Each graph was solved with the prescribed parameters, with random small $k$ and $t$ that force partial executions, and after degree reduction with $\delta\in\{3,4,5\}$. No variant, repaired or as printed, returned a wrong distance in any of the \ValSmallRuns{} and \ValMediumRuns{} runs. Table~\ref{tab:valid} summarizes what the instrumentation recorded with the prescribed parameters.
+
+\begin{table}[t]
+\caption{Randomized validation with the prescribed parameters: number of runs in which an event occurred at least once}
+\label{tab:valid}
+\centering
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\hline
+Graphs & Variant & Runs & Wrong & Stale & Dupl. & Bound\\
+ &  &  & dist. & key & compl. & viol.\\
+\hline
+\tabinput{tables/validation.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\emph{Stale keys.} A key stored in $D$ keeps the value it had when inserted, while the label of its vertex can decrease during a recursive call. For \bmA{} this is the defect reported in~\cite{castro2025}: in our runs without deletion a vertex was reported complete a second time within one call in \ValSmallDupTwoFive{} of the small and \ValMediumDupTwoFive{} of the medium instances, the smallest having \ValMinNDupTwoFive{} vertices. The same happens in \bmB{}. The proof of Lemma~9 in~\cite{duan2026} (lemma numbers refer to the proceedings version) states that the returned set $U_i$ is not in $D$ and needs no removal; in \ValSmallStaleTwoSix{} small and \ValMediumStaleTwoSix{} medium instances at least one vertex of $U_i$ was still stored in the caller's $D$ when the sub-call returned. Without deletion such a vertex is pulled again later with its old key and its already completed subtree is explored again, so the sets $U_i$ of one call are not disjoint (\ValSmallDupTwoSix{} and \ValMediumDupTwoSix{} instances, smallest with \ValMinNDupTwoSix{} vertices), contrary to Lemma~10 of~\cite{duan2026}, on which the running-time analysis relies. Deleting the vertices of $U_i$ from $D$ after the merge removes every such event. We have not contacted the authors of~\cite{duan2026}; the statement here is limited to what the instrumented runs show.
+
+\emph{Boundary returned by the base case of \bmB.} Algorithm~4 of~\cite{duan2026} returns the separator delivered by its last \textsc{Pull}, which is computed before the arcs of the pulled vertex are relaxed. If the loop then ends because $t^3+1$ vertices have been extracted, those relaxations may have inserted values below the returned $\Bp$, contradicting the requirement $\Bp\le d_B[D]$ of Lemma~9, or the structure may be non-empty although $\Bp=B$ signals a full execution. A directed path with $t^3+2$ vertices searched from its first vertex is the simplest example: the last \textsc{Pull} empties the structure and returns $B$, and relaxing the pulled vertex then inserts its successor. The event occurred in \ValSmallBoundTwoSix{} small and \ValMediumBoundTwoSix{} medium instances (smallest: \ValMinNBoundTwoSix{} vertices). Returning the smallest remaining value after the loop restores the invariant.
+
+On the road networks these events are rare. Without deletion, repeated completions amount to at most \DupPctMaxTwoFive\% of $n$ for \bmA{} and at most \DupPctMaxTwoSix\% for \bmB{}, and the running times of printed and repaired variants agree within measurement noise. The repairs matter for the validity of the analysis rather than for speed on these inputs.
+
+\subsection{Road networks: running time}
+Table~\ref{tab:realtime} gives the main comparison. Dijkstra's algorithm is faster than both BMSSP algorithms on all five networks from every source: by a factor between \RealRatioMinTwoFive{} and \RealRatioMaxTwoFive{} against \bmA{} and between \RealRatioMinTwoSix{} and \RealRatioMaxTwoSix{} against \bmB{}. The two Dijkstra variants are within about ten percent of each other. \bmB{} is the faster of the two new algorithms on \RealTwoSixFasterWord{} network only (\RealTwoSixFasterList) and practically ties on NA; these are the two networks with the smallest average degree (Table~\ref{tab:data}), and on them \bmA{} needs the most comparisons (Table~\ref{tab:realcount}). Over the individual start vertices the ratio ranges from \RealSrcMinTwoFive{} to \RealSrcMaxTwoFive{} for \bmA{} and from \RealSrcMinTwoSix{} to \RealSrcMaxTwoSix{} for \bmB.
+
+The largest ratios are a property of two particular inputs and not of road networks in general. In \ChainNets{} \ChainPctA\% and \ChainPctB\% of the vertices have exactly two neighbours, so these networks are long chains of shape points joined at few junctions, against \ChainRestMin\% to \ChainRestMax\% in the other three. On the two chain-like networks \bmA{} is \ChainRatioMin{} to \ChainRatioMax{} times slower than Dijkstra, on the other three \RestRatioMin{} to \RestRatioMax{} times, and on the three much larger SNAP road networks (Section~\ref{sec:snap}) \SnapTimeRoadMinTwoFive{} to \SnapTimeRoadMaxTwoFive{} times. The latter values are close to the factor of three to four reported by~\cite{castro2025} for large road networks. Size matters as well: on instances with a few thousand vertices all ratios are higher, in our measurements (Fig.~\ref{fig:scaling}) as in theirs.
+
+\begin{table}[t]
+\caption{Road networks: median time of one SSSP computation in milliseconds, and ratio to Dijkstra (geometric mean of the per-source ratios). Dijkstra: binary heap with lazy deletion; Dijkstra-DK: indexed heap with \textsc{DecreaseKey}}
+\label{tab:realtime}
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}l|r|rr|rr|rr@{}}
+\hline
+ & Dijkstra & \multicolumn{2}{c|}{Dijkstra-DK} & \multicolumn{2}{c|}{\bmA} & \multicolumn{2}{c}{\bmB}\\
+ & ms & ms & ratio & ms & ratio & ms & ratio\\
+\hline
+\tabinput{tables/real_time.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Road networks: operation counts}
+Table~\ref{tab:realcount} separates algorithmic work from cost per operation. Dijkstra's algorithm scans every arc once and performs one addition per arc. \bmA{} scans each arc between \ScanMinTwoFive{} and \ScanMaxTwoFive{} times and \bmB{} between \ScanMinTwoSix{} and \ScanMaxTwoSix{} times, and since each scan evaluates $\dhat[u]+w_{uv}$, additions grow by \AddRatioMinTwoFive{} to \AddRatioMaxTwoFive{} times and \AddRatioMinTwoSix{} to \AddRatioMaxTwoSix{} times respectively. More notably, on these networks the new algorithms also perform \emph{more comparisons} than Dijkstra's algorithm: \CmpRatioMinTwoFive{} to \CmpRatioMaxTwoFive{} times as many for \bmA{} and \CmpRatioMinTwoSix{} to \CmpRatioMaxTwoSix{} times as many for \bmB{}. Dijkstra's heap never holds more than \RoadPeakMax\% of the vertices of a road network (Table~\ref{tab:data}), so there is little ordering work to save, and what is saved is more than offset by the comparisons that accompany the repeated relaxations. Section~\ref{sec:structure} shows that this changes on graphs with a wide frontier.
+
+\begin{table}[t]
+\caption{Road networks: comparisons (cmp.), additions (add.) and edge scans (scans) per arc, mean over sources. Dijkstra's algorithm performs exactly one addition and one edge scan per arc}
+\label{tab:realcount}
+\centering
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}l|r|rrr|rrr@{}}
+\hline
+ & Dijkstra & \multicolumn{3}{c|}{\bmA} & \multicolumn{3}{c}{\bmB}\\
+ & cmp. & cmp. & add. & scans & cmp. & add. & scans\\
+\hline
+\tabinput{tables/real_count.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{edge_scans}
+\caption{Edge scans per arc on the road networks for \bmA{} (bars marked B-25) and \bmB{} (B-26), split by where they occur. Dijkstra's algorithm scans every arc exactly once.}
+\label{fig:counts}
+\end{figure}
+
+Fig.~\ref{fig:counts} shows where the scans occur and what \bmB{} changes. In \bmA{}, \fp{} accounts for more than one scan per arc on every network: its relaxation rounds touch each arc about as often as Dijkstra's whole computation. In \bmB{} the local searches cost a small fraction of that, so the refinement achieves what it was designed for. The gain is offset in the relaxation loops: every level of the recursion relaxes all arcs leaving the sets it receives, and with the prescribed parameters \bmB{} has a level more than \bmA{} on OL, SF and NA (Table~\ref{tab:data}), the topmost of which merely passes the single source down and scans every arc once more on the way back.
+
+Dividing the time ratio by the ratio of comparisons plus additions gives the relative cost per counted operation: \PerOpMinTwoFive{} to \PerOpMaxTwoFive{} for \bmA{} and \PerOpMinTwoSix{} to \PerOpMaxTwoSix{} for \bmB{}. The slowdown thus splits into two factors of similar size: \OpsRatioMinTwoFive{} to \OpsRatioMaxTwoFive{} (\bmA) and \OpsRatioMinTwoSix{} to \OpsRatioMaxTwoSix{} (\bmB) times more work in the comparison-addition model, and a higher cost of each operation that the model does not see: four-field labels instead of single numbers, bookkeeping of blocks and tables, and less regular memory access.
+
+\subsection{Degree reduction}
+Table~\ref{tab:reduce} reports the effect of running on the degree-reduced graph that the analyses assume. With $\delta=3$ the graph has $2m$ vertices and $3m$ arcs, between \ReduceNGrowMin{} and \ReduceNGrowMax{} times the original number of vertices. Both BMSSP algorithms become \ReduceSlowMinTwoFive{} to \ReduceSlowMaxTwoFive{} times (\bmA) and \ReduceSlowMinTwoSix{} to \ReduceSlowMaxTwoSix{} times (\bmB) slower than on the original graph, and Dijkstra's algorithm itself is several times slower on the transformed input. The road networks already have maximum degree at most 14, so the transformation buys nothing here, in line with the finding of~\cite{castro2025} for \bmA. A larger bound $\delta=4$ reduces the penalty for \bmB{} but does not remove it.
+
+\begin{table}[t]
+\caption{Degree reduction: growth of the graph for $\delta=3$ and time relative to Dijkstra on the original graph}
+\label{tab:reduce}
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}l|rr|r|rr|rrr@{}}
+\hline
+ & \multicolumn{2}{c|}{growth} & Dijkstra & \multicolumn{2}{c|}{\bmA} & \multicolumn{3}{c}{\bmB}\\
+ & $n$ & $m$ & $\delta{=}3$ & orig. & $\delta{=}3$ & orig. & $\delta{=}3$ & $\delta{=}4$\\
+\hline
+\tabinput{tables/reduce.tex}
+\hline
+\end{tabular}
+\end{table}
+
+\input{results_rest}
+
+\section{Conclusion}
+We compared Dijkstra's algorithm with the two algorithms of Duan et al. that break the sorting barrier for directed graphs, using independent implementations, eleven real graphs, four synthetic families and counts in the comparison-addition model. Dijkstra's algorithm with a binary heap was the fastest of the three on every instance, by factors between \AllRatioMin{} and \AllRatioMax. In the cost model the picture is more differentiated. Where Dijkstra's frontier is narrow, as on road networks and grids, the new algorithms perform more comparisons and additions at every size. Where it is wide and degrees are bounded, \bmA{} performs fewer comparisons than lazy-heap Dijkstra from a few tens of thousands of vertices on (from $10^5$ to $10^6$ against the \textsc{DecreaseKey} variant), and \bmB{} from about a million: the asymptotic advantage is real and observable on synthetic graphs. On real web and social graphs it shows only against the lazy heap and only on the two largest instances. It is not yet an advantage in time, because every arc is scanned several times and each operation is costlier. \bmB{} achieves the cheaper pivot finding its analysis promises, but with the prescribed parameters this did not make it faster than \bmA{} on most inputs. The validation exposed two places where the published pseudocode of \bmB{} departs from its stated invariants; both are easy to repair and neither changed a computed distance. Useful next steps are parameter rules derived from measured constants instead of asymptotic balance, an implementation of \bmB{} that avoids the redundant top level and the node-based base case, and measurements on machines large enough to follow the comparison counts beyond $2^{22}$ vertices.
+
+\begin{thebibliography}{00}
+\bibitem{dijkstra1959} E. W. Dijkstra, ``A note on two problems in connexion with graphs,'' \emph{Numer. Math.}, vol. 1, pp. 269--271, 1959, doi: 10.1007/BF01386390.
+\bibitem{fredman1987} M. L. Fredman and R. E. Tarjan, ``Fibonacci heaps and their uses in improved network optimization algorithms,'' \emph{J. ACM}, vol. 34, no. 3, pp. 596--615, Jul. 1987, doi: 10.1145/28869.28874.
+\bibitem{driscoll1988} J. R. Driscoll, H. N. Gabow, R. Shrairman, and R. E. Tarjan, ``Relaxed heaps: An alternative to Fibonacci heaps with applications to parallel computation,'' \emph{Commun. ACM}, vol. 31, no. 11, pp. 1343--1354, Nov. 1988, doi: 10.1145/50087.50096.
+\bibitem{haeupler2024} B. Haeupler, R. Hlad\'ik, V. Rozho\v{n}, R. E. Tarjan, and J. T\v{e}tek, ``Universal optimality of Dijkstra via beyond-worst-case heaps,'' in \emph{Proc. IEEE 65th Annu. Symp. Found. Comput. Sci. (FOCS)}, 2024, pp. 2099--2130, doi: 10.1109/FOCS61266.2024.00125.
+\bibitem{duan2025} R. Duan, J. Mao, X. Mao, X. Shu, and L. Yin, ``Breaking the sorting barrier for directed single-source shortest paths,'' in \emph{Proc. 57th Annu. ACM Symp. Theory Comput. (STOC)}, 2025, pp. 36--44, doi: 10.1145/3717823.3718179.
+\bibitem{duan2026} R. Duan, X. Mao, X. Shu, and L. Yin, ``A faster directed single-source shortest path algorithm,'' in \emph{Proc. 53rd Int. Colloq. Automata, Lang., Program. (ICALP)}, LIPIcs, vol. 374, 2026, pp. 81:1--81:23, doi: 10.4230/LIPIcs.ICALP.2026.81.
+\bibitem{castro2025} L. Castro, T. Clementino, and R. de Freitas, ``Implementation and experimental analysis of the Duan et al. (2025) algorithm for single-source shortest paths,'' 2026, arXiv:2511.03007v3.
+\bibitem{valko2025} D. Valko, R. Paranjpe, and J. Marx G\'omez, ``An empirical evaluation of BMSSP and Dijkstra's algorithm for the Lightning Network,'' 2026, arXiv:2509.13448v2.
+\bibitem{makowski2025} C. Makowski, W. Guter, T. Russell, and A. Saragih, ``BMSSPy: A Python package and empirical comparison of bounded multi-source shortest path algorithm,'' MIT Center Transp. Logistics, Cambridge, MA, USA, Res. Paper 2025/034, Nov. 2025. [Online]. Available: https://ssrn.com/abstract=5777186
+\bibitem{cherkassky1996} B. V. Cherkassky, A. V. Goldberg, and T. Radzik, ``Shortest paths algorithms: Theory and experimental evaluation,'' \emph{Math. Program.}, vol. 73, no. 2, pp. 129--174, May 1996, doi: 10.1007/BF02592101.
+\bibitem{thorup1999} M. Thorup, ``Undirected single-source shortest paths with positive integer weights in linear time,'' \emph{J. ACM}, vol. 46, no. 3, pp. 362--394, May 1999, doi: 10.1145/316542.316548.
+\bibitem{pettie2005} S. Pettie and V. Ramachandran, ``A shortest path algorithm for real-weighted undirected graphs,'' \emph{SIAM J. Comput.}, vol. 34, no. 6, pp. 1398--1431, 2005, doi: 10.1137/S0097539702419650.
+\bibitem{duan2023} R. Duan, J. Mao, X. Shu, and L. Yin, ``A randomized algorithm for single-source shortest path on undirected real-weighted graphs,'' in \emph{Proc. IEEE 64th Annu. Symp. Found. Comput. Sci. (FOCS)}, 2023, pp. 484--492, doi: 10.1109/FOCS57990.2023.00035.
+\bibitem{yan2026} S. Yan, ``Lossless derandomization for undirected single-source shortest paths and approximate distance oracles,'' in \emph{Proc. SIAM Symp. Simplicity Algorithms (SOSA)}, 2026, pp. 404--412, doi: 10.1137/1.9781611978964.32.
+\bibitem{kadria2026} A. Kadria and L. Roditty, ``A faster undirected single-source shortest path algorithm,'' 2026, arXiv:2609.15247.
+\bibitem{bmsspcode} L. Castro, T. Clementino, and R. de Freitas. \emph{bmssp: Header-only C++ implementation of the shortest-path BMSSP algorithm}. GitHub. Accessed: Oct. 12, 2026. [Online]. Available: https://github.com/lcs147/bmssp
+\bibitem{ryu2025} M. Ryu. \emph{bmssp-python: Python implementation of the BMSSP shortest path algorithm}. (2025). GitHub. Accessed: Oct. 12, 2026. [Online]. Available: https://github.com/bzantium/bmssp-python
+\bibitem{webb2025} J. Webb. \emph{DunMaoSSSP: A Rust implementation of the Duan--Mao et al. algorithm for single-source shortest paths}. (2025). GitHub. Accessed: Oct. 12, 2026. [Online]. Available: https://github.com/alphastrata/DunMaoSSSP
+\bibitem{frederickson1983} G. N. Frederickson, ``Data structures for on-line updating of minimum spanning trees,'' in \emph{Proc. 15th Annu. ACM Symp. Theory Comput. (STOC)}, 1983, pp. 252--257, doi: 10.1145/800061.808754.
+\bibitem{williams1964} J. W. J. Williams, ``Algorithm 232: Heapsort,'' \emph{Commun. ACM}, vol. 7, no. 6, pp. 347--348, Jun. 1964.
+\bibitem{guibas1978} L. J. Guibas and R. Sedgewick, ``A dichromatic framework for balanced trees,'' in \emph{Proc. 19th Annu. Symp. Found. Comput. Sci. (SFCS)}, 1978, pp. 8--21, doi: 10.1109/SFCS.1978.3.
+\bibitem{blum1973} M. Blum, R. W. Floyd, V. Pratt, R. L. Rivest, and R. E. Tarjan, ``Time bounds for selection,'' \emph{J. Comput. Syst. Sci.}, vol. 7, no. 4, pp. 448--461, Aug. 1973, doi: 10.1016/S0022-0000(73)80033-9.
+\bibitem{musser1997} D. R. Musser, ``Introspective sorting and selection algorithms,'' \emph{Softw. Pract. Exper.}, vol. 27, no. 8, pp. 983--993, Aug. 1997.
+\bibitem{thiscode} Anmol, T. Arora, Adhyyan, and P. V. S. Gogna. \emph{bmssp-vs-dijkstra: Implementations, experiments and data for a comparison of Dijkstra's algorithm and the SSSP algorithms of Duan et al.} (2026). GitHub. Accessed: Oct. 12, 2026. [Online]. Available: https://github.com/anmoltutejagithub/bmssp-vs-dijkstra
+\bibitem{li2005} F. Li, D. Cheng, M. Hadjieleftheriou, G. Kollios, and S.-H. Teng, ``On trip planning queries in spatial databases,'' in \emph{Advances in Spatial and Temporal Databases (SSTD)}, Lecture Notes Comput. Sci., 2005, pp. 273--290, doi: 10.1007/11535331\_16.
+\bibitem{ansari2020} M. Ansari, 2020, ``Real dataset shortest path sample (road networks of the SSTD 2005 collection),'' GitHub. [Online]. Available: https://github.com/mehdi-ansari/Real-dataset-shortest-path-sample
+\bibitem{brinkhoff2002} T. Brinkhoff, ``A framework for generating network-based moving objects,'' \emph{GeoInformatica}, vol. 6, no. 2, pp. 153--180, Jun. 2002, doi: 10.1023/A:1015231126594.
+\bibitem{snap} J. Leskovec and A. Krevl, Jun. 2014, ``SNAP datasets: Stanford large network dataset collection,'' Stanford Univ. [Online]. Available: http://snap.stanford.edu/data
+\bibitem{barabasi1999} A.-L. Barab\'asi and R. Albert, ``Emergence of scaling in random networks,'' \emph{Science}, vol. 286, no. 5439, pp. 509--512, Oct. 1999, doi: 10.1126/science.286.5439.509.
+\bibitem{bellman1958} R. Bellman, ``On a routing problem,'' \emph{Quart. Appl. Math.}, vol. 16, no. 1, pp. 87--90, 1958.
+\end{thebibliography}
+
+\end{document}

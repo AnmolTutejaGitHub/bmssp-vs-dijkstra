@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software or its measurements, please cite it as below."
+title: "bmssp-vs-dijkstra: Implementations, experiments and data for a comparison of Dijkstra's algorithm and the SSSP algorithms of Duan et al."
+authors:
+  - given-names: Anmol
+    email: anmol0115.be23@chitkara.edu.in
+  - given-names: Tanmay
+    family-names: Arora
+    email: tanmay1305.be23@chitkara.edu.in
+  - given-names: Adhyyan
+    email: adhyya0180.be23@chitkara.edu.in
+  - given-names: Pahul Veer Singh
+    family-names: Gogna
+    email: pahul0508.be23@chitkara.edu.in
+date-released: 2026-10-12
+repository-code: "https://github.com/anmoltutejagithub/bmssp-vs-dijkstra"
+keywords:
+  - shortest paths
+  - Dijkstra
+  - BMSSP
+  - experimental algorithmics

@@ -1,0 +1,20 @@
+# 2025 pseudocode without deletion: a vertex is reported complete twice in one call
+# n m source, then one arc per line: tail head weight
+9 17 0
+0 1 0
+0 2 3
+0 3 3
+0 4 3
+0 5 0
+0 6 1
+0 7 2
+0 8 3
+0 5 3
+0 8 0
+1 8 1
+4 1 1
+5 7 3
+5 7 2
+6 4 1
+6 4 3
+8 2 0

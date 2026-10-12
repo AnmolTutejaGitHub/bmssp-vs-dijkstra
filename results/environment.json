@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-12 21:04:55 +0530",
+  "platform": "macOS-26.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "cpu": "Apple M1",
+  "cores": 8,
+  "memory_bytes": "8589934592",
+  "compiler": "Apple clang version 17.0.0 (clang-1700.3.19.1)",
+  "flags": "-std=c++17 -O3 -DNDEBUG",
+  "python": "3.14.3",
+  "dataset_commit": "99cc5c06982d9f5345100c1d1f88d9ccdeb1adcf",
+  "seed": 20261012
+}

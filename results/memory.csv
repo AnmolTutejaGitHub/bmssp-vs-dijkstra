@@ -1,0 +1,17 @@
+graph,algo,peak_rss_bytes
+SF,dijkstra,18497536
+SF,dijkstra-dk,19873792
+SF,bmssp25,32391168
+SF,bmssp26,42467328
+NA,dijkstra,17088512
+NA,dijkstra-dk,19169280
+NA,bmssp25,30638080
+NA,bmssp26,40517632
+rand-20,dijkstra,132595712
+rand-20,dijkstra-dk,125779968
+rand-20,bmssp25,221396992
+rand-20,bmssp26,297992192
+rand-22,dijkstra,525811712
+rand-22,dijkstra-dk,498548736
+rand-22,bmssp25,900857856
+rand-22,bmssp26,1226539008

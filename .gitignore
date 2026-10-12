@@ -1,0 +1,10 @@
+# build products and local environments
+.venv/
+scripts/bin/
+*.dSYM/
+__pycache__/
+.DS_Store
+# third-party data (fetched by scripts/fetch_data.sh)
+data/
+# course material that is not part of the artifact
+Resources/
