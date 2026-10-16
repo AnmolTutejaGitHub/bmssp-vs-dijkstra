@@ -185,6 +185,22 @@ hub	19	14.7	10.08	41.74	29.45	1	1	3.368	6
 hub	20	15.45	10.58	43.59	30.44	1	1	3.32	5.883
 hub	21	16.19	11.08	46.63	31.02	1	1	3.291	5.566
 
+## FIGURE 5: SNAP graphs, running time relative to Dijkstra with unit and with random weights
+# HOW TO PLOT
+#   Chart type: grouped bar chart (as in the paper, Fig. 5).
+#   X axis: the six SNAP graphs, in file order: Stanford, Google, roadPA, roadTX, roadCA, Pokec.
+#   Y axis: 'Running time relative to Dijkstra', linear scale, start at 0 (largest bar is about 4.5).
+#   Four bars per graph, in this order: BMSSP-25 unit, BMSSP-25 random, BMSSP-26 unit, BMSSP-26 random.
+#           Solid bar = unit weights, pale bar = random weights; orange = BMSSP-25, green = BMSSP-26.
+#   Reference line: horizontal line at y = 1 = Dijkstra with a binary heap (the baseline).
+graph	bmssp25_unit	bmssp25_rand	bmssp26_unit	bmssp26_rand
+Stanford	3.233	3.146	4.48	4.254
+Google	2.236	2.535	3.01	3.679
+roadPA	2.921	2.613	3.782	3.389
+roadTX	3.029	2.625	3.766	3.451
+roadCA	2.806	2.605	3.514	3.279
+Pokec	2.287	1.295	3.52	1.879
+
 ## EXTRA (table V of the paper, not a figure): road networks, time ratio to Dijkstra
 # HOW TO PLOT
 #   Not a figure in the paper. To plot: grouped bar chart, x = network, one bar per algorithm, y = ratio

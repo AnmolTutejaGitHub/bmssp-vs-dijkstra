@@ -165,6 +165,14 @@ HOWTO = {
         "The columns add_* (additions per arc) are NOT plotted in the paper; they are quoted in the text.",
         "        To plot 'comparisons + additions per arc' instead, add cmp_X + add_X for each algorithm X.",
     ],
+    "FIGURE 5": [
+        "Chart type: grouped bar chart (as in the paper, Fig. 5).",
+        "X axis: the six SNAP graphs, in file order: Stanford, Google, roadPA, roadTX, roadCA, Pokec.",
+        "Y axis: 'Running time relative to Dijkstra', linear scale, start at 0 (largest bar is about 4.5).",
+        "Four bars per graph, in this order: BMSSP-25 unit, BMSSP-25 random, BMSSP-26 unit, BMSSP-26 random.",
+        "        Solid bar = unit weights, pale bar = random weights; orange = BMSSP-25, green = BMSSP-26.",
+        "Reference line: horizontal line at y = 1 = Dijkstra with a binary heap (the baseline).",
+    ],
     "EXTRA (table V": [
         "Not a figure in the paper. To plot: grouped bar chart, x = network, one bar per algorithm, y = ratio",
         "        (linear, from 0); the two last columns can be drawn as error bars; reference line at y = 1.",
@@ -959,6 +967,42 @@ def snap_table():
             macro("SnapCmp%sMin%s" % (grp, tag), fmt(min(c), 2)); macro("SnapCmp%sMax%s" % (grp, tag), fmt(max(c), 2))
             t = [out["%s/%s/%s" % (g, w, a)]["time"] for g in gs for w in ("unit", "rand")]
             macro("SnapTime%sMin%s" % (grp, tag), fmt(min(t), 1)); macro("SnapTime%sMax%s" % (grp, tag), fmt(max(t), 1))
+
+    # Figure: running time relative to Dijkstra on the SNAP graphs, unit and random weights.
+    # One group per graph; two bars per algorithm, the pale one being the random weighting.
+    def lighten(color, amount=0.55):
+        r, g, b = matplotlib.colors.to_rgb(color)
+        return (r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount)
+
+    fig, ax = plt.subplots(figsize=(COL2, 2.35))
+    xs0 = np.arange(len(names))
+    ymax = 0.0
+    handles, labels = [], []
+    for j, a in enumerate(("bmssp25", "bmssp26")):
+        for k, wgt in enumerate(("unit", "rand")):
+            xs = xs0 + (j - 0.5) * 0.46 + (k - 0.5) * 0.21
+            ys = [out["%s/%s/%s" % (g, wgt, a)]["time"] for g in names]
+            ymax = max(ymax, max(ys))
+            handles.append(ax.bar(
+                xs, ys, 0.20, zorder=3, edgecolor="white", linewidth=0.4,
+                color=STYLE[a]["color"] if wgt == "unit" else lighten(STYLE[a]["color"]),
+                hatch=STYLE[a]["hatch"]))
+            labels.append("%s, %s" % (STYLE[a]["label"], wgt))
+    base = ax.axhline(1, color=STYLE["dijkstra"]["color"], lw=1.2, zorder=4)
+    handles.insert(0, base); labels.insert(0, "Dijkstra (binary heap) = 1")
+    ax.set_xticks(xs0)
+    ax.set_xticklabels(names)
+    ax.set_ylabel("Running time relative to Dijkstra")
+    ax.set_ylim(0, max(5.0, ymax * 1.12))
+    ax.yaxis.grid(True, zorder=0)
+    ax.set_axisbelow(True)
+    ax.legend(handles, labels, loc="upper center", ncol=5, frameon=False, handlelength=1.4,
+              columnspacing=1.1, bbox_to_anchor=(0.5, 1.15))
+    save(fig, "snap_ratio")
+    figdata("FIGURE 5: SNAP graphs, running time relative to Dijkstra with unit and with random weights",
+            ["graph", "bmssp25_unit", "bmssp25_rand", "bmssp26_unit", "bmssp26_rand"],
+            [(g,) + tuple(out["%s/%s/%s" % (g, wgt, a)]["time"]
+                          for a in ("bmssp25", "bmssp26") for wgt in ("unit", "rand")) for g in names])
 
 
 # ---------------------------------------------------------------------- memory
