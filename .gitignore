@@ -8,3 +8,5 @@ __pycache__/
 data/
 # course material that is not part of the artifact
 Resources/
+# local rephrasing drafts
+re-phrase/
